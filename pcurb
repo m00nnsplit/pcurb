@@ -1,0 +1,118 @@
+#!/usr/bin/python3
+import praw
+import curses
+import textwrap
+from sys import argv, stdout, stderr
+
+# structure is the same as in my ncurses labyrinth game
+# we're doing argument processing inside main and reply depending on what main returns
+# for now no arguments, we just start up in interactive mode
+def main(standardScreen, reddit) :
+	curses.curs_set(False)
+	curses.use_default_colors()
+	screenMaxY, screenMaxX = standardScreen.getmaxyx()
+
+	# no arguments -> interactive mode
+	if len(argv) > 1 :
+		if argv[1] == 'help' or argv[1] == 'h' or argv[1] == '-h' :
+			return 'help'
+		else :
+			#TODO if arguments one day
+			pass 	
+		pass
+	
+	standardScreen.clear()
+
+
+
+	currentSubreddit = 'paradoxplaza'
+	submissionsNumberLimit = 20
+
+	yCoord = 0
+
+	# titleWin displays current subreddit
+	titleWin = standardScreen.subwin(3, screenMaxX, 0,0)
+	titleWin.border()
+
+	titleWin.addstr(1,1, "Sub : "+currentSubreddit)
+
+
+	submissionsPad = curses.newpad(submissionsNumberLimit*2+1, screenMaxX+1) #submissions number limit times lines per submission
+
+	
+	submissionsPad.addstr(0,0,"Fetching submissions..")
+	standardScreen.refresh()
+	submissionsPad.refresh(yCoord,0,3,1,screenMaxY-1,screenMaxX-1)
+
+	submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
+
+	while True :
+
+
+		k=0
+		for subIter in submissions :
+			#return str(subIter)
+			submissionsPad.addstr(k*2, 0, str(k)+'] '+str(subIter))
+			submissionsPad.addstr(k*2+1,0,'----------')
+			k=k+1
+
+
+
+		standardScreen.refresh()
+		submissionsPad.refresh(yCoord,0,3,1,screenMaxY-1,screenMaxX-1)
+
+		userInput = standardScreen.getch()
+
+		if userInput == curses.KEY_DOWN :
+			if yCoord< (submissionsNumberLimit*2 - screenMaxY +2+3) :
+				yCoord = yCoord+1
+		elif userInput == curses.KEY_UP :
+			if yCoord>0 :
+				yCoord = yCoord-1
+
+		elif userInput == ord('m') or userInput == ord('M') :
+			# M for 'more', type number of a submission to read it
+			submissionToOpen = standardScreen.getstr()
+			#TODO : use something a bit more sophisticated than getstr()
+			#return str(int(submissionToOpen))
+			try :
+				if int(submissionToOpen)<20 :
+					# we open a new window with the contents of the submission
+					submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
+					yCoordComments = 0
+					xCoordComments = 0
+					
+					submissionsPad.erase()
+					commentsPad = curses.newpad(submissionsNumberLimit*2+1, screenMaxX+1) 
+					for i in range(int(submissionToOpen)) :
+						#next(submissions) #FIXME
+						submissionWeAreLookingAt = next(submissions)
+					commentsPad.addstr(0,0,praw.helpers.flatten_tree(submissionWeAreLookingAt.comments)[0].body)	
+
+
+
+					commentsPad.refresh(yCoordComments,0,3,1,screenMaxY-1,screenMaxX-1)
+					standardScreen.getch()
+					submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
+
+			except ValueError :
+				pass
+	
+		elif userInput == ord('q') or userInput == ord('Q') :
+			break
+
+
+			
+
+
+appVersion = 'testing v1'
+
+reddit = praw.Reddit(user_agent='PCURB:'+appVersion+' (by /u/m00nnsplit)')
+errorType = curses.wrapper(main, reddit)
+
+if errorType == "help" :
+	print("ncurses & PRAW -based console reddit browser in Python 3")
+	exit()
+#else :
+#	print("error : "+errorType)
+#	exit()
