@@ -3,10 +3,70 @@ import praw
 import curses
 import textwrap
 from sys import argv, stdout, stderr
+from warnings import filterwarnings
+filterwarnings("ignore", category=ResourceWarning)
+# We get a warning because the SSL connection is not closed, but according to the PRAW people this is intentional, since the garbage collector takes care of it apparently
 
 # structure is the same as in my ncurses labyrinth game
 # we're doing argument processing inside main and reply depending on what main returns
 # for now no arguments, we just start up in interactive mode
+
+
+
+
+def displayComments(standardScreen, screenMaxY, screenMaxX, submissionsPad, reddit, currentSubreddit, submissionToOpen, submissionsNumberLimit):
+	# we open a new window with the contents of the submission
+	submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
+	yCoordComments = 0
+	xCoordComments = 0
+	
+	submissionsPad.erase()
+	commentsPad = curses.newpad(200*100, screenMaxX+1) #200 is the max number of connents reddit loads at once and 100 is what I hope is the mean number or lines they'll take
+	for i in range(int(submissionToOpen)+1) :
+		submissionWeAreLookingAt = next(submissions)
+	commentsPad.addstr(0,0, str(submissionWeAreLookingAt))
+	#commentsPad.addstr(0,0,praw.helpers.flatten_tree(submissionWeAreLookingAt.comments)[0].body)	
+
+
+	commentLevel=0
+	leapLines = 2
+	wrapper=textwrap.TextWrapper(width=screenMaxX-1, drop_whitespace=False)#replace_whitespace=False)
+	#TODO:replace_whitespace eats words, the textrwrap doc suggests use of str.splitlines()
+
+	for i in submissionWeAreLookingAt.comments :
+		try :
+			commentsPad.addstr(leapLines,0,"---- "+str(i.score)+" : "+str(i.author))
+			leapLines=leapLines+1
+			for j in wrapper.wrap(i.body) :
+				commentsPad.addstr(leapLines, 0, ("  "*commentLevel)+j)
+				leapLines=leapLines+1
+		except AttributeError :
+		#it's a MoreComments
+			pass
+	commentsPad.addstr(leapLines,0,"==EOC==");#TODO: find a better way to prevent user scrolling into the abyss
+	commentsPad.refresh(yCoordComments,0,3,1,screenMaxY-1,screenMaxX-1)
+	
+	while True :
+		standardScreen.refresh()
+		commentsPad.refresh(yCoordComments,0,3,1,screenMaxY-1,screenMaxX-1)
+
+		userInput = standardScreen.getch()
+
+		if userInput == curses.KEY_DOWN :
+			if yCoordComments< (200*100 - screenMaxY-1) :
+				yCoordComments = yCoordComments+1
+		elif userInput == curses.KEY_UP :
+			if yCoordComments>0 :
+				yCoordComments = yCoordComments-1
+		elif userInput == ord('q') or userInput==ord('Q') :
+			break
+
+
+
+
+
+
+
 def main(standardScreen, reddit) :
 	curses.curs_set(False)
 	curses.use_default_colors()
@@ -26,7 +86,7 @@ def main(standardScreen, reddit) :
 
 
 	currentSubreddit = 'paradoxplaza'
-	submissionsNumberLimit = 20
+	submissionsNumberLimit = 25
 
 	yCoord = 0
 
@@ -76,25 +136,10 @@ def main(standardScreen, reddit) :
 			#TODO : use something a bit more sophisticated than getstr()
 			#return str(int(submissionToOpen))
 			try :
-				if int(submissionToOpen)<20 :
-					# we open a new window with the contents of the submission
+				if int(submissionToOpen)<submissionsNumberLimit:
+					displayComments(standardScreen, screenMaxY, screenMaxX, submissionsPad, reddit, currentSubreddit, submissionToOpen, submissionsNumberLimit)
 					submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
-					yCoordComments = 0
-					xCoordComments = 0
-					
-					submissionsPad.erase()
-					commentsPad = curses.newpad(submissionsNumberLimit*2+1, screenMaxX+1) 
-					for i in range(int(submissionToOpen)) :
-						#next(submissions) #FIXME
-						submissionWeAreLookingAt = next(submissions)
-					commentsPad.addstr(0,0,praw.helpers.flatten_tree(submissionWeAreLookingAt.comments)[0].body)	
-
-
-
-					commentsPad.refresh(yCoordComments,0,3,1,screenMaxY-1,screenMaxX-1)
-					standardScreen.getch()
-					submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
-
+					standardScreen.refresh()
 			except ValueError :
 				pass
 	
