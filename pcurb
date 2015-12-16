@@ -3,6 +3,7 @@ import praw
 import curses
 import textwrap
 from sys import argv, stdout, stderr
+from datetime import datetime
 from warnings import filterwarnings
 filterwarnings("ignore", category=ResourceWarning)
 # We get a warning because the SSL connection is not closed, but according to the PRAW people this is intentional, since the garbage collector takes care of it apparently
@@ -25,13 +26,25 @@ def displayComments(standardScreen, screenMaxY, screenMaxX, submissionsPad, redd
 	for i in range(int(submissionToOpen)+1) :
 		submissionWeAreLookingAt = next(submissions)
 	commentsPad.addstr(0,0, str(submissionWeAreLookingAt))
+	commentsPad.addstr(1,0, "By "+str(submissionWeAreLookingAt.author)+" at "+str(datetime.fromtimestamp(submissionWeAreLookingAt.created)))
 	#commentsPad.addstr(0,0,praw.helpers.flatten_tree(submissionWeAreLookingAt.comments)[0].body)	
 
 
 	commentLevel=0
-	leapLines = 2
+	leapLines = 3
 	wrapper=textwrap.TextWrapper(width=screenMaxX-1, drop_whitespace=False)#replace_whitespace=False)
 	#TODO:replace_whitespace eats words, the textrwrap doc suggests use of str.splitlines()
+
+
+	try :
+		for k in wrapper.wrap(submissionWeAreLookingAt.selftext) :
+			commentsPad.addstr(leapLines, 0, k)
+			leapLines=leapLines+1
+	except AttributeError : # no selftext
+		#FIXME: doesn't seem to work on link posts
+		commentsPad.addstr(leapLines,0,"[no text]")
+		leapLines=leapLines+1
+	leapLines=leapLines+1
 
 	for i in submissionWeAreLookingAt.comments :
 		try :
@@ -43,7 +56,7 @@ def displayComments(standardScreen, screenMaxY, screenMaxX, submissionsPad, redd
 		except AttributeError :
 		#it's a MoreComments
 			pass
-	commentsPad.addstr(leapLines,0,"==EOC==");#TODO: find a better way to prevent user scrolling into the abyss
+	commentsPad.addstr(leapLines+2,0,"==EOC==");#TODO: find a better way to prevent user scrolling into the abyss
 	commentsPad.refresh(yCoordComments,0,3,1,screenMaxY-1,screenMaxX-1)
 	
 	while True :
