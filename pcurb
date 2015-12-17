@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 import praw
 import curses
-import textwrap
+import textwrap # needed for properly presenting paragraphs
 from sys import argv, stdout, stderr
-from datetime import datetime
+from datetime import datetime # for parsing timestamps
+from os import getcwd # used for the help message
 from warnings import filterwarnings
 filterwarnings("ignore", category=ResourceWarning)
 # We get a warning because the SSL connection is not closed, but according to the PRAW people this is intentional, since the garbage collector takes care of it apparently
@@ -89,16 +90,19 @@ def main(standardScreen, reddit) :
 	if len(argv) > 1 :
 		if argv[1] == 'help' or argv[1] == 'h' or argv[1] == '-h' :
 			return 'help'
+
 		else :
-			#TODO if arguments one day
+			currentSubreddit = argv[1]
 			pass 	
 		pass
+	else :
+		currentSubreddit = 'Announcements'
 	
+
 	standardScreen.clear()
 
 
 
-	currentSubreddit = 'paradoxplaza'
 	submissionsNumberLimit = 25
 
 	yCoord = 0
@@ -170,6 +174,8 @@ errorType = curses.wrapper(main, reddit)
 
 if errorType == "help" :
 	print("ncurses & PRAW -based console reddit browser in Python 3")
+	print("pass subreddit name as argument")
+	print("please read "+getcwd()+"/readme file for more details")
 	exit()
 #else :
 #	print("error : "+errorType)

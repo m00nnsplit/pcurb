@@ -1,5 +1,7 @@
 Python CUrses Reddit Browser (PCURB) is supposed to be a curses interface in Python 3, ncurses and PRAW
 
+Run it simply by typing ./pcurb in a terminal. You can pass it "help", "h" or "-h" to get a short help ; type a subreddit name as argument to open that subreddit. (for instance, "./pcurb gifsofotters")
+
 When looking at a subreddit, use the up and down arrow keys to scroll, or Q to quit.
 
 Press M ("more"), then type a number, then press Enter and wait to see comments. Once there, use arrow keys to scroll or press Q to quit.
