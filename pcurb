@@ -16,7 +16,7 @@ filterwarnings("ignore", category=ResourceWarning)
 
 
 
-def displayComments(standardScreen, screenMaxY, screenMaxX, submissionsPad, reddit, currentSubreddit, submissionToOpen, submissionsNumberLimit):
+def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submissionsPad, reddit, currentSubreddit, submissionToOpen, submissionsNumberLimit):
 	# we open a new window with the contents of the submission
 	submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
 	yCoordComments = 0
@@ -33,14 +33,15 @@ def displayComments(standardScreen, screenMaxY, screenMaxX, submissionsPad, redd
 
 	commentLevel=0
 	leapLines = 3
-	wrapper=textwrap.TextWrapper(width=screenMaxX-1, drop_whitespace=False)#replace_whitespace=False)
+	wrapper=textwrap.TextWrapper(width=screenMaxX-1)#, drop_whitespace=False)#replace_whitespace=False)
 	#TODO:replace_whitespace eats words, the textrwrap doc suggests use of str.splitlines()
 
 
 	try :
-		for k in wrapper.wrap(submissionWeAreLookingAt.selftext) :
-			commentsPad.addstr(leapLines, 0, k)
-			leapLines=leapLines+1
+		for k in str.splitlines(submissionWeAreLookingAt.selftext) :
+			for l in wrapper.wrap(k) :
+				commentsPad.addstr(leapLines, 0, l)
+				leapLines=leapLines+1
 	except AttributeError : # no selftext
 		#FIXME: doesn't seem to work on link posts
 		commentsPad.addstr(leapLines,0,"[no text]")
@@ -51,14 +52,18 @@ def displayComments(standardScreen, screenMaxY, screenMaxX, submissionsPad, redd
 		try :
 			commentsPad.addstr(leapLines,0,"---- "+str(i.score)+" : "+str(i.author))
 			leapLines=leapLines+1
-			for j in wrapper.wrap(i.body) :
-				commentsPad.addstr(leapLines, 0, ("  "*commentLevel)+j)
-				leapLines=leapLines+1
+			for iPrime in str.splitlines(i.body) :
+				for j in wrapper.wrap(iPrime) :
+					commentsPad.addstr(leapLines, 0, ("  "*commentLevel)+j)
+					leapLines=leapLines+1
+			leapLines=leapLines+1 #let's skip one more
 		except AttributeError :
 		#it's a MoreComments
 			pass
 	commentsPad.addstr(leapLines+2,0,"==EOC==");#TODO: find a better way to prevent user scrolling into the abyss
 	commentsPad.refresh(yCoordComments,0,3,1,screenMaxY-1,screenMaxX-1)
+	titleWin.addstr(1,screenMaxX-16, "               ")
+	titleWin.refresh()
 	
 	while True :
 		standardScreen.refresh()
@@ -154,7 +159,9 @@ def main(standardScreen, reddit) :
 			#return str(int(submissionToOpen))
 			try :
 				if int(submissionToOpen)<submissionsNumberLimit:
-					displayComments(standardScreen, screenMaxY, screenMaxX, submissionsPad, reddit, currentSubreddit, submissionToOpen, submissionsNumberLimit)
+					titleWin.addstr(1, screenMaxX-15, "Loading no"+str(int(submissionToOpen)))
+					titleWin.refresh()
+					displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submissionsPad, reddit, currentSubreddit, submissionToOpen, submissionsNumberLimit)
 					submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
 					standardScreen.refresh()
 			except ValueError :
