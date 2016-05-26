@@ -14,8 +14,50 @@ filterwarnings("ignore", category=ResourceWarning)
 # for now no arguments, we just start up in interactive mode
 
 
+class Config :
+	def __init__(self, fileName="pcurb.cfg") :
+		try :
+			fileStream=open(fileName)
+			for workingLine in fileStream.readlines() :
+				workingLine.replace(" ", "")
+				words=workingLine.split("=")
+				if workingLine  == "" :
+					pass
+				elif workingLine[0]=="#" :
+					pass
+				elif words[0]=="defaultSub" :
+					self.defaultSub=words[1]
+				elif words[0]=="nbSubsPerPage" :
+					self.nbSubsPerPage=int(words[1])
+				elif words[0]=="commentTreeLength" :
+					self.commentTreeLength=int(words[1])
+
+		except OSError as readError :
+			self.defaultSub="blog"
+			self.nbSubsPerPage=25
+			self.commentTreeLength=5
 
 
+
+
+# for recursivly displaying comment trees
+def displayReply(commentsPad, screenMaxX, leapLines, comment, commentLevel, desiredLevel) :
+	#FIXME:there's a problem somewhere, apparently when dealing with big comments
+	wrapper=textwrap.TextWrapper(width=(screenMaxX-1-(commentLevel*2)))
+
+	commentsPad.addstr(leapLines,commentLevel*2,"---- "+str(comment.score)+" : "+str(comment.author))
+	leapLines=leapLines+1
+	for i in str.splitlines(comment.body) :
+		for j in wrapper.wrap(i) :
+			commentsPad.addstr(leapLines, commentLevel*2,j)
+			leapLines=leapLines+1
+	if desiredLevel>commentLevel :
+		for k in comment.replies :
+			leapLines=displayReply(commentsPad, screenMaxX, leapLines+1, k, commentLevel+1, desiredLevel)
+	return leapLines
+
+
+# when a submission is opened, this function opens a new window and generates everything inside
 def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submissionsPad, reddit, currentSubreddit, submissionToOpen, submissionsNumberLimit):
 	# we open a new window with the contents of the submission
 	submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
@@ -43,23 +85,18 @@ def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submission
 				commentsPad.addstr(leapLines, 0, l)
 				leapLines=leapLines+1
 	except AttributeError : # no selftext
-		#FIXME: doesn't seem to work on link posts
+		#FIXME: doesn't seem to work
 		commentsPad.addstr(leapLines,0,"[no text]")
 		leapLines=leapLines+1
 	leapLines=leapLines+1
 
 	for i in submissionWeAreLookingAt.comments :
 		try :
-			commentsPad.addstr(leapLines,0,"---- "+str(i.score)+" : "+str(i.author))
-			leapLines=leapLines+1
-			for iPrime in str.splitlines(i.body) :
-				for j in wrapper.wrap(iPrime) :
-					commentsPad.addstr(leapLines, 0, ("  "*commentLevel)+j)
-					leapLines=leapLines+1
+			leapLines=displayReply(commentsPad, screenMaxX, leapLines, i, commentLevel, 3)
 			leapLines=leapLines+1 #let's skip one more
 		except AttributeError :
 		#it's a MoreComments
-			pass
+			leapLines=leapLines+1 
 	commentsPad.addstr(leapLines+2,0,"==EOC==");#TODO: find a better way to prevent user scrolling into the abyss
 	commentsPad.refresh(yCoordComments,0,3,1,screenMaxY-1,screenMaxX-1)
 	titleWin.addstr(1,screenMaxX-16, "               ")
@@ -87,9 +124,7 @@ def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submission
 
 
 def main(standardScreen, reddit) :
-	curses.curs_set(False)
-	curses.use_default_colors()
-	screenMaxY, screenMaxX = standardScreen.getmaxyx()
+	#TODO : use the Config class and the pcurb.cfg file
 
 	# no arguments -> interactive mode
 	if len(argv) > 1 :
@@ -104,9 +139,12 @@ def main(standardScreen, reddit) :
 		currentSubreddit = 'Announcements'
 	
 
+
+
+	curses.curs_set(False)
+	curses.use_default_colors()
+	screenMaxY, screenMaxX = standardScreen.getmaxyx()
 	standardScreen.clear()
-
-
 
 	submissionsNumberLimit = 25
 
