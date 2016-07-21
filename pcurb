@@ -43,6 +43,13 @@ class Config :
 # for recursivly displaying comment trees
 def displayReply(commentsPad, screenMaxX, leapLines, comment, commentLevel, desiredLevel) :
 	#FIXME:there's a problem somewhere, apparently when dealing with big comments
+	# I think this fixed it :
+	# basically a problem with MoreComments instead of Comment
+	if not isinstance(comment, praw.objects.Comment):
+		commentsPad.addstr(leapLines, commentLevel*2, "[More Comments]")
+		return leapLines+1
+
+	
 	wrapper=textwrap.TextWrapper(width=(screenMaxX-1-(commentLevel*2)))
 
 	commentsPad.addstr(leapLines,commentLevel*2,"---- "+str(comment.score)+" : "+str(comment.author))
