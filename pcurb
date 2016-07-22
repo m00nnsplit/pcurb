@@ -51,8 +51,10 @@ def displayReply(commentsPad, screenMaxX, leapLines, comment, commentLevel, desi
 
 	
 	wrapper=textwrap.TextWrapper(width=(screenMaxX-1-(commentLevel*2)))
-
-	commentsPad.addstr(leapLines,commentLevel*2,"---- "+str(comment.score)+" : "+str(comment.author))
+	try:
+		commentsPad.addstr(leapLines,commentLevel*2,"---- "+str(comment.score)+" : "+str(comment.author)+"["+comment.author_flair_text+"]")
+	except TypeError: #no flair
+		commentsPad.addstr(leapLines,commentLevel*2,"---- "+str(comment.score)+" : "+str(comment.author))
 	leapLines=leapLines+1
 	for i in str.splitlines(comment.body) :
 		for j in wrapper.wrap(i) :
@@ -76,12 +78,16 @@ def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submission
 	for i in range(int(submissionToOpen)+1) :
 		submissionWeAreLookingAt = next(submissions)
 	commentsPad.addstr(0,0, str(submissionWeAreLookingAt))
-	commentsPad.addstr(1,0, "By "+str(submissionWeAreLookingAt.author)+" at "+str(datetime.fromtimestamp(submissionWeAreLookingAt.created)))
+	try :
+		commentsPad.addstr(1,0, "By "+str(submissionWeAreLookingAt.author)+"["+submissionWeAreLookingAt.author_flair_text+"]"+" at "+str(datetime.fromtimestamp(submissionWeAreLookingAt.created)))
+	except TypeError : # no flair
+		commentsPad.addstr(1,0, "By "+str(submissionWeAreLookingAt.author)+" at "+str(datetime.fromtimestamp(submissionWeAreLookingAt.created)))
 	#commentsPad.addstr(0,0,praw.helpers.flatten_tree(submissionWeAreLookingAt.comments)[0].body)	
+	commentsPad.addstr(2,0,"Link: "+submissionWeAreLookingAt.permalink);
 
 
 	commentLevel=0
-	leapLines = 3
+	leapLines = 5
 	wrapper=textwrap.TextWrapper(width=screenMaxX-1)#, drop_whitespace=False)#replace_whitespace=False)
 	#TODO:replace_whitespace eats words, the textrwrap doc suggests use of str.splitlines()
 
@@ -104,7 +110,7 @@ def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submission
 		except AttributeError :
 		#it's a MoreComments
 			leapLines=leapLines+1 
-	commentsPad.addstr(leapLines+2,0,"==EOC==");#TODO: find a better way to prevent user scrolling into the abyss
+	commentsPad.addstr(leapLines+2,0,"== End of comments ==");#TODO: find a better way to prevent user scrolling into the abyss
 	commentsPad.refresh(yCoordComments,0,3,1,screenMaxY-1,screenMaxX-1)
 	titleWin.addstr(1,screenMaxX-16, "               ")
 	titleWin.refresh()
@@ -121,6 +127,16 @@ def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submission
 		elif userInput == curses.KEY_UP :
 			if yCoordComments>0 :
 				yCoordComments = yCoordComments-1
+
+		elif userInput == curses.KEY_PPAGE : #page up
+			if (yCoordComments-(screenMaxY-3))>=0 :
+				yCoordComments = yCoordComments-(screenMaxY-3)+3
+			else :
+				yCoordComments = 0;
+		elif userInput == curses.KEY_NPAGE : #page down
+			if (yCoordComments+(screenMaxY-3))<(200*100-(screenMaxY-3)) :
+				yCoordComments = yCoordComments+(screenMaxY-3)-3
+
 		elif userInput == ord('q') or userInput==ord('Q') :
 			break
 
@@ -164,7 +180,7 @@ def main(standardScreen, reddit) :
 	titleWin.addstr(1,1, "Sub : "+currentSubreddit)
 
 
-	submissionsPad = curses.newpad(submissionsNumberLimit*2+1, screenMaxX+1) #submissions number limit times lines per submission
+	submissionsPad = curses.newpad(submissionsNumberLimit*5+2, screenMaxX+1) #submissions number limit times lines per submission
 
 	
 	submissionsPad.addstr(0,0,"Fetching submissions..")
@@ -177,11 +193,34 @@ def main(standardScreen, reddit) :
 
 
 		k=0
+		subIndice = 0
 		for subIter in submissions :
-			#return str(subIter)
-			submissionsPad.addstr(k*2, 0, str(k)+'] '+str(subIter))
-			submissionsPad.addstr(k*2+1,0,'----------')
-			k=k+1
+			subText = subIter.title +" ("+str(subIter.score)+"pts|"+str(subIter.num_comments)+"coms)"
+			if len(subText)+4<screenMaxX :
+				subHeightLines = 1
+				submissionsPad.addstr(k, 0, str(subIndice)+'] '+subText)
+			#if a submission title is more than 4 lines, well..
+			elif len(subText)+4<screenMaxX*2 :
+				subHeightLines = 2
+				submissionsPad.addstr(k,0,str(subIndice)+'] '+subText[:screenMaxX-5])
+				submissionsPad.addstr(k+1,0,subText[screenMaxX-5:])
+			
+			elif len(subText)+4<screenMaxX*3 :
+				subHeightLines = 3
+				submissionsPad.addstr(k,0,str(subIndice)+'] '+subText[:screenMaxX-5])
+				submissionsPad.addstr(k+1,0,subText[screenMaxX-5:screenMaxX*2-5])
+				submissionsPad.addstr(k+2,0,subText[screenMaxX*2-5:screenMaxX*3])
+
+			elif len(subText)+4<screenMaxX*4 :
+				subHeightLines = 4
+				submissionsPad.addstr(k,0,str(subIndice)+'] '+subText[:screenMaxX-5])
+				submissionsPad.addstr(k+1,0,subText[screenMaxX-5:screenMaxX*2-5])
+				submissionsPad.addstr(k+2,0,subText[screenMaxX*2-5:screenMaxX*3-5])
+				submissionsPad.addstr(k+2,0,subText[screenMaxX*3-5:screenMaxX*4])
+
+			submissionsPad.addstr(k+subHeightLines,0,'----------')
+			k=k+subHeightLines+1
+			subIndice=subIndice+1
 
 
 
