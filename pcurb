@@ -52,7 +52,10 @@ def displayReply(commentsPad, screenMaxX, leapLines, comment, commentLevel, desi
 	
 	wrapper=textwrap.TextWrapper(width=(screenMaxX-1-(commentLevel*2)))
 	try:
-		commentsPad.addstr(leapLines,commentLevel*2,"---- "+str(comment.score)+" : "+str(comment.author)+"["+comment.author_flair_text+"]")
+		if (len(comment.author_flair_text)>25):
+			commentsPad.addstr(leapLines,commentLevel*2,"---- "+str(comment.score)+" : "+str(comment.author)+"["+comment.author_flair_text[:23]+"..]")
+		else :
+			commentsPad.addstr(leapLines,commentLevel*2,"---- "+str(comment.score)+" : "+str(comment.author)+"["+comment.author_flair_text+"]")
 	except TypeError: #no flair
 		commentsPad.addstr(leapLines,commentLevel*2,"---- "+str(comment.score)+" : "+str(comment.author))
 	leapLines=leapLines+1
@@ -92,13 +95,13 @@ def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submission
 		leapLines=leapLines+1
 
 	leapLines=leapLines+1
-	commentsPad.addstr(leapLines,0,"Score: "+str(submissionWeAreLookingAt.score)+", with "+str(submissionWeAreLookingAt.num_comments)+" comments")
+	commentsPad.addstr(leapLines,0,"Score: "+str(submissionWeAreLookingAt.score)+". Comments:  "+str(submissionWeAreLookingAt.num_comments)+". Submitted "+str(datetime.fromtimestamp(submissionWeAreLookingAt.created))+".")
 	leapLines=leapLines+1
 
 	try :
-		commentsPad.addstr(leapLines,0, "By "+str(submissionWeAreLookingAt.author)+"["+submissionWeAreLookingAt.author_flair_text+"]"+" at "+str(datetime.fromtimestamp(submissionWeAreLookingAt.created)))
+		commentsPad.addstr(leapLines,0, "By "+str(submissionWeAreLookingAt.author)+"["+submissionWeAreLookingAt.author_flair_text+"]")
 	except TypeError : # no flair
-		commentsPad.addstr(leapLines,0, "By "+str(submissionWeAreLookingAt.author)+" at "+str(datetime.fromtimestamp(submissionWeAreLookingAt.created)))
+		commentsPad.addstr(leapLines,0, "By "+str(submissionWeAreLookingAt.author))
 
 	leapLines=leapLines+2
 
@@ -218,6 +221,8 @@ def main(standardScreen, reddit) :
 
 	submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
 
+	
+	wrapper=textwrap.TextWrapper(width=(screenMaxX-1))
 	while True :
 
 
@@ -225,30 +230,15 @@ def main(standardScreen, reddit) :
 		subIndice = 0
 		for subIter in submissions :
 			try:
-				subText = "["+subIter.link_flair_text+"]"+subIter.title +" ("+str(subIter.score)+"pts|"+str(subIter.num_comments)+"coms)"
+				subText = str(subIndice)+"] ["+subIter.link_flair_text+"]"+subIter.title +" ("+str(subIter.score)+"pts|"+str(subIter.num_comments)+"coms)"
 			except TypeError: #no flair
-				subText = subIter.title +" ("+str(subIter.score)+"pts|"+str(subIter.num_comments)+"coms)"
-			if len(subText)+4<screenMaxX :
-				subHeightLines = 1
-				submissionsPad.addstr(k, 0, str(subIndice)+'] '+subText)
-			#if a submission title is more than 4 lines, well..
-			elif len(subText)+4<screenMaxX*2 :
-				subHeightLines = 2
-				submissionsPad.addstr(k,0,str(subIndice)+'] '+subText[:screenMaxX-5])
-				submissionsPad.addstr(k+1,0,subText[screenMaxX-5:])
-			
-			elif len(subText)+4<screenMaxX*3 :
-				subHeightLines = 3
-				submissionsPad.addstr(k,0,str(subIndice)+'] '+subText[:screenMaxX-5])
-				submissionsPad.addstr(k+1,0,subText[screenMaxX-5:screenMaxX*2-5])
-				submissionsPad.addstr(k+2,0,subText[screenMaxX*2-6:screenMaxX*3])
+				subText = str(subIndice)+"] "+subIter.title +" ("+str(subIter.score)+"pts|"+str(subIter.num_comments)+"coms)"
 
-			elif len(subText)+4<screenMaxX*4 :
-				subHeightLines = 4
-				submissionsPad.addstr(k,0,str(subIndice)+'] '+subText[:screenMaxX-5])
-				submissionsPad.addstr(k+1,0,subText[screenMaxX-5:screenMaxX*2-5])
-				submissionsPad.addstr(k+2,0,subText[screenMaxX*2-6:screenMaxX*3-5])
-				submissionsPad.addstr(k+2,0,subText[screenMaxX*3-6:screenMaxX*4])
+			subHeightLines=0
+			for l in wrapper.wrap(subText) :
+				submissionsPad.addstr(k+subHeightLines,0,l)
+				subHeightLines=subHeightLines+1
+
 
 			submissionsPad.addstr(k+subHeightLines,0,'----------')
 			k=k+subHeightLines+1
