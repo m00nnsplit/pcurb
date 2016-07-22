@@ -290,7 +290,7 @@ def main(standardScreen, reddit) :
 			
 
 
-appVersion = 'testing v1'
+appVersion = 'v1'
 
 reddit = praw.Reddit(user_agent='PCURB:'+appVersion+' (by /u/m00nnsplit)')
 errorType = curses.wrapper(main, reddit)
