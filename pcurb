@@ -77,30 +77,59 @@ def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submission
 	commentsPad = curses.newpad(200*100, screenMaxX+1) #200 is the max number of connents reddit loads at once and 100 is what I hope is the mean number or lines they'll take
 	for i in range(int(submissionToOpen)+1) :
 		submissionWeAreLookingAt = next(submissions)
-	commentsPad.addstr(0,0, str(submissionWeAreLookingAt))
-	try :
-		commentsPad.addstr(1,0, "By "+str(submissionWeAreLookingAt.author)+"["+submissionWeAreLookingAt.author_flair_text+"]"+" at "+str(datetime.fromtimestamp(submissionWeAreLookingAt.created)))
-	except TypeError : # no flair
-		commentsPad.addstr(1,0, "By "+str(submissionWeAreLookingAt.author)+" at "+str(datetime.fromtimestamp(submissionWeAreLookingAt.created)))
-	#commentsPad.addstr(0,0,praw.helpers.flatten_tree(submissionWeAreLookingAt.comments)[0].body)	
-	commentsPad.addstr(2,0,"Link: "+submissionWeAreLookingAt.permalink);
 
-
-	commentLevel=0
-	leapLines = 5
+	leapLines = 0
 	wrapper=textwrap.TextWrapper(width=screenMaxX-1)#, drop_whitespace=False)#replace_whitespace=False)
 	#TODO:replace_whitespace eats words, the textrwrap doc suggests use of str.splitlines()
 
+	try:
+		subText = "["+submissionWeAreLookingAt.link_flair_text+"]"+submissionWeAreLookingAt.title
+	except TypeError: #no flair
+		subText = submissionWeAreLookingAt.title
+
+	for l in wrapper.wrap(subText) :
+		commentsPad.addstr(leapLines,0, l)
+		leapLines=leapLines+1
+
+	leapLines=leapLines+1
+	commentsPad.addstr(leapLines,0,"Score: "+str(submissionWeAreLookingAt.score)+", with "+str(submissionWeAreLookingAt.num_comments)+" comments")
+	leapLines=leapLines+1
 
 	try :
+		commentsPad.addstr(leapLines,0, "By "+str(submissionWeAreLookingAt.author)+"["+submissionWeAreLookingAt.author_flair_text+"]"+" at "+str(datetime.fromtimestamp(submissionWeAreLookingAt.created)))
+	except TypeError : # no flair
+		commentsPad.addstr(leapLines,0, "By "+str(submissionWeAreLookingAt.author)+" at "+str(datetime.fromtimestamp(submissionWeAreLookingAt.created)))
+
+	leapLines=leapLines+2
+
+
+
+	commentsPad.addstr(leapLines,0,"Permalink: "+submissionWeAreLookingAt.permalink[:screenMaxX-1-len("Permalink: ")])
+	for l in wrapper.wrap(submissionWeAreLookingAt.permalink[screenMaxX-1-len("Permalink: "):]) :
+		leapLines=leapLines+1
+		commentsPad.addstr(leapLines,0,l)
+
+	leapLines=leapLines+2
+
+
+	commentLevel=0
+
+	if submissionWeAreLookingAt.selftext=="" : # no text
+		if submissionWeAreLookingAt.permalink != submissionWeAreLookingAt.url :
+			#hopefully, this should filter out textless self posts
+			commentsPad.addstr(leapLines,0,"Linking to: "+submissionWeAreLookingAt.url[:screenMaxX-1-len("Linking to: ")])
+			for l in wrapper.wrap(submissionWeAreLookingAt.url[screenMaxX-1-len("Linking to: "):]) :
+				leapLines=leapLines+1
+				commentsPad.addstr(leapLines,0,l)
+		else :
+			commentsPad.addstr(leapLines,0,"[no text]")
+		leapLines=leapLines+2
+
+	else :
 		for k in str.splitlines(submissionWeAreLookingAt.selftext) :
 			for l in wrapper.wrap(k) :
 				commentsPad.addstr(leapLines, 0, l)
 				leapLines=leapLines+1
-	except AttributeError : # no selftext
-		#FIXME: doesn't seem to work
-		commentsPad.addstr(leapLines,0,"[no text]")
-		leapLines=leapLines+1
 	leapLines=leapLines+1
 
 	for i in submissionWeAreLookingAt.comments :
@@ -195,7 +224,10 @@ def main(standardScreen, reddit) :
 		k=0
 		subIndice = 0
 		for subIter in submissions :
-			subText = subIter.title +" ("+str(subIter.score)+"pts|"+str(subIter.num_comments)+"coms)"
+			try:
+				subText = "["+subIter.link_flair_text+"]"+subIter.title +" ("+str(subIter.score)+"pts|"+str(subIter.num_comments)+"coms)"
+			except TypeError: #no flair
+				subText = subIter.title +" ("+str(subIter.score)+"pts|"+str(subIter.num_comments)+"coms)"
 			if len(subText)+4<screenMaxX :
 				subHeightLines = 1
 				submissionsPad.addstr(k, 0, str(subIndice)+'] '+subText)
@@ -209,14 +241,14 @@ def main(standardScreen, reddit) :
 				subHeightLines = 3
 				submissionsPad.addstr(k,0,str(subIndice)+'] '+subText[:screenMaxX-5])
 				submissionsPad.addstr(k+1,0,subText[screenMaxX-5:screenMaxX*2-5])
-				submissionsPad.addstr(k+2,0,subText[screenMaxX*2-5:screenMaxX*3])
+				submissionsPad.addstr(k+2,0,subText[screenMaxX*2-6:screenMaxX*3])
 
 			elif len(subText)+4<screenMaxX*4 :
 				subHeightLines = 4
 				submissionsPad.addstr(k,0,str(subIndice)+'] '+subText[:screenMaxX-5])
 				submissionsPad.addstr(k+1,0,subText[screenMaxX-5:screenMaxX*2-5])
-				submissionsPad.addstr(k+2,0,subText[screenMaxX*2-5:screenMaxX*3-5])
-				submissionsPad.addstr(k+2,0,subText[screenMaxX*3-5:screenMaxX*4])
+				submissionsPad.addstr(k+2,0,subText[screenMaxX*2-6:screenMaxX*3-5])
+				submissionsPad.addstr(k+2,0,subText[screenMaxX*3-6:screenMaxX*4])
 
 			submissionsPad.addstr(k+subHeightLines,0,'----------')
 			k=k+subHeightLines+1
