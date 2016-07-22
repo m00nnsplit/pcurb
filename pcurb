@@ -13,13 +13,18 @@ filterwarnings("ignore", category=ResourceWarning)
 # we're doing argument processing inside main and reply depending on what main returns
 # for now no arguments, we just start up in interactive mode
 
-
+# variables :
+# defaultSub
+# nbSubsPerPage
+# commentTreeLength
 class Config :
 	def __init__(self, fileName="pcurb.cfg") :
 		try :
 			fileStream=open(fileName)
 			for workingLine in fileStream.readlines() :
-				workingLine.replace(" ", "")
+				workingLine = workingLine.replace(" ", "")
+				workingLine = workingLine.replace("\n", "")
+				workingLine = workingLine.replace("\r", "")
 				words=workingLine.split("=")
 				if workingLine  == "" :
 					pass
@@ -33,7 +38,7 @@ class Config :
 					self.commentTreeLength=int(words[1])
 
 		except OSError as readError :
-			self.defaultSub="blog"
+			self.defaultSub="announcements"
 			self.nbSubsPerPage=25
 			self.commentTreeLength=5
 
@@ -181,6 +186,8 @@ def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submission
 def main(standardScreen, reddit) :
 	#TODO : use the Config class and the pcurb.cfg file
 
+	config = Config()
+
 	# no arguments -> interactive mode
 	if len(argv) > 1 :
 		if argv[1] == 'help' or argv[1] == 'h' or argv[1] == '-h' :
@@ -191,17 +198,14 @@ def main(standardScreen, reddit) :
 			pass 	
 		pass
 	else :
-		currentSubreddit = 'Announcements'
-	
-
-
+		currentSubreddit = config.defaultSub
 
 	curses.curs_set(False)
 	curses.use_default_colors()
 	screenMaxY, screenMaxX = standardScreen.getmaxyx()
 	standardScreen.clear()
 
-	submissionsNumberLimit = 25
+	submissionsNumberLimit = config.nbSubsPerPage
 
 	yCoord = 0
 
@@ -244,6 +248,9 @@ def main(standardScreen, reddit) :
 			k=k+subHeightLines+1
 			subIndice=subIndice+1
 
+		#TODO find better
+		submissionsPad.addstr(k+1,0,"== End of submissions ==")
+
 
 
 		standardScreen.refresh()
@@ -252,7 +259,7 @@ def main(standardScreen, reddit) :
 		userInput = standardScreen.getch()
 
 		if userInput == curses.KEY_DOWN :
-			if yCoord< (submissionsNumberLimit*2 - screenMaxY +2+3) :
+			if yCoord< (submissionsNumberLimit*5-screenMaxY+3) :
 				yCoord = yCoord+1
 		elif userInput == curses.KEY_UP :
 			if yCoord>0 :
