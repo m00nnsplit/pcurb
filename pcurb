@@ -86,19 +86,44 @@ def displayReply(commentsPad, screenMaxX, leapLines, comment, commentLevel, desi
 # when a submission is opened, this function opens a new window and generates everything inside
 def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submissionsPad, reddit, currentSubreddit, submissionToOpen, submissionsNumberLimit, subMode):
 	# we open a new window with the contents of the submission
+	#TODO send it the submission object, not just the number..
 	if subMode == "hot":
 		submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
 	elif subMode == "rising": 
 		submissions = reddit.get_subreddit(currentSubreddit).get_rising(limit=submissionsNumberLimit)
 	elif subMode == "new": 
 		submissions = reddit.get_subreddit(currentSubreddit).get_new(limit=submissionsNumberLimit)
-	elif subMode == "top": 
-		submissions = reddit.get_subreddit(currentSubreddit).get_top(limit=submissionsNumberLimit)
-	elif subMode == "contro": 
-		submissions = reddit.get_subreddit(currentSubreddit).get_controversial(limit=submissionsNumberLimit)
+
+	elif subMode == "top-hr": 
+		submissions = reddit.get_subreddit(currentSubreddit).get_top_from_hour(limit=submissionsNumberLimit)
+	elif subMode == "top-dy": 
+		submissions = reddit.get_subreddit(currentSubreddit).get_top_from_day(limit=submissionsNumberLimit)
+	elif subMode == "top-wk": 
+		submissions = reddit.get_subreddit(currentSubreddit).get_top_from_week(limit=submissionsNumberLimit)
+	elif subMode == "top-mn": 
+		submissions = reddit.get_subreddit(currentSubreddit).get_top_from_month(limit=submissionsNumberLimit)
+	elif subMode == "top-yr": 
+		submissions = reddit.get_subreddit(currentSubreddit).get_top_from_year(limit=submissionsNumberLimit)
+	elif subMode == "top-al": 
+		submissions = reddit.get_subreddit(currentSubreddit).get_top_from_all(limit=submissionsNumberLimit)
+
+	elif subMode == "con-hr": 
+		submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_hour(limit=submissionsNumberLimit)
+	elif subMode == "con-dy": 
+		submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_day(limit=submissionsNumberLimit)
+	elif subMode == "con-wk": 
+		submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_week(limit=submissionsNumberLimit)
+	elif subMode == "con-mn": 
+		submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_month(limit=submissionsNumberLimit)
+	elif subMode == "con-yr": 
+		submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_year(limit=submissionsNumberLimit)
+	elif subMode == "con-al": 
+		submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_all(limit=submissionsNumberLimit)
+
 	else :
-		#subMode = "hot"
+		subMode = "hot"
 		submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
+
 
 
 	yCoordComments = 0
@@ -204,28 +229,63 @@ def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submission
 
 # presents a window of options (hot, best, top, etc..) and returns what was selected
 def selectMode(standardScreen, screenMaxY, screenMaxX) :
-	text = ["Select what you like:","[0] hot    [1] new", "[2] rising [3] top", "[4] controversial"]
+	text = [
+	"        Type and press Enter:",
+	"[0] hot       [1] new       [2] rising",
+	"                                    ",
+	"[3] top (hr)  [4] top (dy)  [5] top (wk)",
+	"[6] top (mn)  [7] top (yr)  [8] top (al)" ,
+	"                                    ",
+	"[9] con (hr)  [10] con (dy) [11] con (wk)",
+	"[12] con (mn) [13] con (yr) [14] con (al)"]
 	
-	smallWin = standardScreen.subwin(6,23,int(screenMaxY/2)-3,int(screenMaxX/2)-10)
+	smallWin = standardScreen.subwin(10,43,int(screenMaxY/2)-3,int(screenMaxX/2)-20)
 	smallWin.border();
 	smallWin.addstr(1,1,text[0])
 	smallWin.addstr(2,1,text[1])
 	smallWin.addstr(3,1,text[2])
 	smallWin.addstr(4,1,text[3])
+	smallWin.addstr(5,1,text[4])
+	smallWin.addstr(6,1,text[5])
+	smallWin.addstr(7,1,text[6])
+	smallWin.addstr(8,1,text[7])
 	smallWin.refresh()
 
 	try:
-		inp = int(standardScreen.getkey());
+		inp = int(standardScreen.getstr());
 		if inp == 0:
 			return "hot"
 		elif inp == 1:
 			return "new"
 		elif inp == 2:
 			return "rising"
+
 		elif inp == 3:
-			return "top"
+			return "top-hr"
 		elif inp == 4:
-			return "contro"
+			return "top-dy"
+		elif inp == 5:
+			return "top-wk"
+		elif inp == 6:
+			return "top-mn"
+		elif inp == 7:
+			return "top-yr"
+		elif inp == 8:
+			return "top-al"
+
+		elif inp == 9:
+			return "con-hr"
+		elif inp == 10:
+			return "con-dy"
+		elif inp == 11:
+			return "con-wk"
+		elif inp == 12:
+			return "con-mn"
+		elif inp == 13:
+			return "con-yr"
+		elif inp == 14:
+			return "con-al"
+
 		else:
 			return "error"+str(inp)
 	except ValueError:
@@ -285,17 +345,43 @@ def main(standardScreen, reddit) :
 
 		if needRepaint:
 
+			titleWin.addstr(1,screenMaxX-16,"               ")
+			titleWin.addstr(1,screenMaxX-16,"Loading "+subMode)
 			#I don't know why, but this seems needed
+			#lazy objects maybe ? I'm too lazy to investigate
 			if subMode == "hot":
 				submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
 			elif subMode == "rising": 
 				submissions = reddit.get_subreddit(currentSubreddit).get_rising(limit=submissionsNumberLimit)
 			elif subMode == "new": 
 				submissions = reddit.get_subreddit(currentSubreddit).get_new(limit=submissionsNumberLimit)
-			elif subMode == "top": 
-				submissions = reddit.get_subreddit(currentSubreddit).get_top(limit=submissionsNumberLimit)
-			elif subMode == "contro": 
-				submissions = reddit.get_subreddit(currentSubreddit).get_controversial(limit=submissionsNumberLimit)
+
+			elif subMode == "top-hr": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_top_from_hour(limit=submissionsNumberLimit)
+			elif subMode == "top-dy": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_top_from_day(limit=submissionsNumberLimit)
+			elif subMode == "top-wk": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_top_from_week(limit=submissionsNumberLimit)
+			elif subMode == "top-mn": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_top_from_month(limit=submissionsNumberLimit)
+			elif subMode == "top-yr": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_top_from_year(limit=submissionsNumberLimit)
+			elif subMode == "top-al": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_top_from_all(limit=submissionsNumberLimit)
+
+			elif subMode == "con-hr": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_hour(limit=submissionsNumberLimit)
+			elif subMode == "con-dy": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_day(limit=submissionsNumberLimit)
+			elif subMode == "con-wk": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_week(limit=submissionsNumberLimit)
+			elif subMode == "con-mn": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_month(limit=submissionsNumberLimit)
+			elif subMode == "con-yr": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_year(limit=submissionsNumberLimit)
+			elif subMode == "con-al": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_all(limit=submissionsNumberLimit)
+
 			else :
 				subMode = "hot"
 				submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
@@ -320,6 +406,9 @@ def main(standardScreen, reddit) :
 				k=k+subHeightLines+1
 				subIndice=subIndice+1
 
+			
+			titleWin.addstr(1,screenMaxX-16,"               ")
+			titleWin.addstr(1,screenMaxX-8,subMode)
 			#TODO find better
 			submissionsPad.addstr(k+1,0,"== End of submissions ==")
 			needRepaint = False
@@ -340,22 +429,52 @@ def main(standardScreen, reddit) :
 
 		elif userInput == ord('o') or userInput == ord('O') :
 			# I got nothing, it's just close to M
+
 			subMode = selectMode(standardScreen, screenMaxY, screenMaxX)
+			titleWin.addstr(1,screenMaxX-16,"               ")
+			titleWin.addstr(1,screenMaxX-16,"Loading "+subMode)
+			titleWin.refresh()
+
 			if subMode == "hot":
 				submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
 			elif subMode == "rising": 
 				submissions = reddit.get_subreddit(currentSubreddit).get_rising(limit=submissionsNumberLimit)
 			elif subMode == "new": 
 				submissions = reddit.get_subreddit(currentSubreddit).get_new(limit=submissionsNumberLimit)
-			elif subMode == "top": 
-				submissions = reddit.get_subreddit(currentSubreddit).get_top(limit=submissionsNumberLimit)
-			elif subMode == "contro": 
-				submissions = reddit.get_subreddit(currentSubreddit).get_controversial(limit=submissionsNumberLimit)
+
+			elif subMode == "top-hr": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_top_from_hour(limit=submissionsNumberLimit)
+			elif subMode == "top-dy": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_top_from_day(limit=submissionsNumberLimit)
+			elif subMode == "top-wk": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_top_from_week(limit=submissionsNumberLimit)
+			elif subMode == "top-mn": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_top_from_month(limit=submissionsNumberLimit)
+			elif subMode == "top-yr": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_top_from_year(limit=submissionsNumberLimit)
+			elif subMode == "top-al": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_top_from_all(limit=submissionsNumberLimit)
+
+			elif subMode == "con-hr": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_hour(limit=submissionsNumberLimit)
+			elif subMode == "con-dy": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_day(limit=submissionsNumberLimit)
+			elif subMode == "con-wk": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_week(limit=submissionsNumberLimit)
+			elif subMode == "con-mn": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_month(limit=submissionsNumberLimit)
+			elif subMode == "con-yr": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_year(limit=submissionsNumberLimit)
+			elif subMode == "con-al": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_all(limit=submissionsNumberLimit)
+
 			else :
 				subMode = "hot"
 				submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
 
-			titleWin.addstr(1,screenMaxX-8,"       ")
+
+
+			titleWin.addstr(1,screenMaxX-16,"               ")
 			titleWin.addstr(1,screenMaxX-8,subMode)
 			needRepaint = True
 
