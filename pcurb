@@ -5,6 +5,7 @@ import textwrap # needed for properly presenting paragraphs
 from sys import argv, stdout, stderr
 from datetime import datetime # for parsing timestamps
 from os import getcwd # used for the help message
+from time import sleep # to pause when selecting things
 from warnings import filterwarnings
 filterwarnings("ignore", category=ResourceWarning)
 # We get a warning because the SSL connection is not closed, but according to the PRAW people this is intentional, since the garbage collector takes care of it apparently
@@ -19,6 +20,10 @@ filterwarnings("ignore", category=ResourceWarning)
 # commentTreeLength
 class Config :
 	def __init__(self, fileName="pcurb.cfg") :
+		self.defaultSub="announcements"
+		self.nbSubsPerPage=25
+		self.commentTreeLength=5
+		self.commentUserFlairMaxLength=25
 		try :
 			fileStream=open(fileName)
 			for workingLine in fileStream.readlines() :
@@ -33,16 +38,19 @@ class Config :
 				elif words[0]=="defaultSub" :
 					self.defaultSub=words[1]
 				elif words[0]=="nbSubsPerPage" :
-					self.nbSubsPerPage=int(words[1])
+					if int(words[1])>0:
+						self.nbSubsPerPage=int(words[1])
 				elif words[0]=="commentTreeLength" :
-					self.commentTreeLength=int(words[1])
+					if int(words[1])>=0 :
+						self.commentTreeLength=int(words[1])
+				elif words[0]=="commentUserFlairMaxLength" :
+					if int(words[1])>1:
+						self.commentUserFlairMaxLength=int(words[1])
 
 		except OSError as readError :
-			self.defaultSub="announcements"
-			self.nbSubsPerPage=25
-			self.commentTreeLength=5
+			self.defaultSub="learnPython"
 
-
+global config
 
 
 # for recursivly displaying comment trees
@@ -54,11 +62,12 @@ def displayReply(commentsPad, screenMaxX, leapLines, comment, commentLevel, desi
 		commentsPad.addstr(leapLines, commentLevel*2, "[More Comments]")
 		return leapLines+1
 
+	global config
 	
 	wrapper=textwrap.TextWrapper(width=(screenMaxX-1-(commentLevel*2)))
 	try:
-		if (len(comment.author_flair_text)>25):
-			commentsPad.addstr(leapLines,commentLevel*2,"---- "+str(comment.score)+" : "+str(comment.author)+"["+comment.author_flair_text[:23]+"..]")
+		if (len(comment.author_flair_text)>config.commentUserFlairMaxLength):
+			commentsPad.addstr(leapLines,commentLevel*2,"---- "+str(comment.score)+" : "+str(comment.author)+"["+comment.author_flair_text[:config.commentUserFlairMaxLength-2]+"..]")
 		else :
 			commentsPad.addstr(leapLines,commentLevel*2,"---- "+str(comment.score)+" : "+str(comment.author)+"["+comment.author_flair_text+"]")
 	except TypeError: #no flair
@@ -75,9 +84,23 @@ def displayReply(commentsPad, screenMaxX, leapLines, comment, commentLevel, desi
 
 
 # when a submission is opened, this function opens a new window and generates everything inside
-def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submissionsPad, reddit, currentSubreddit, submissionToOpen, submissionsNumberLimit):
+def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submissionsPad, reddit, currentSubreddit, submissionToOpen, submissionsNumberLimit, subMode):
 	# we open a new window with the contents of the submission
-	submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
+	if subMode == "hot":
+		submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
+	elif subMode == "rising": 
+		submissions = reddit.get_subreddit(currentSubreddit).get_rising(limit=submissionsNumberLimit)
+	elif subMode == "new": 
+		submissions = reddit.get_subreddit(currentSubreddit).get_new(limit=submissionsNumberLimit)
+	elif subMode == "top": 
+		submissions = reddit.get_subreddit(currentSubreddit).get_top(limit=submissionsNumberLimit)
+	elif subMode == "contro": 
+		submissions = reddit.get_subreddit(currentSubreddit).get_controversial(limit=submissionsNumberLimit)
+	else :
+		#subMode = "hot"
+		submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
+
+
 	yCoordComments = 0
 	xCoordComments = 0
 	
@@ -158,10 +181,10 @@ def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submission
 
 		userInput = standardScreen.getch()
 
-		if userInput == curses.KEY_DOWN :
+		if userInput == curses.KEY_DOWN or userInput == ord('j') or userInput == ord('J') :
 			if yCoordComments< (200*100 - screenMaxY-1) :
 				yCoordComments = yCoordComments+1
-		elif userInput == curses.KEY_UP :
+		elif userInput == curses.KEY_UP or userInput == ord('k') or userInput == ord('K'):
 			if yCoordComments>0 :
 				yCoordComments = yCoordComments-1
 
@@ -179,13 +202,40 @@ def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submission
 
 
 
+# presents a window of options (hot, best, top, etc..) and returns what was selected
+def selectMode(standardScreen, screenMaxY, screenMaxX) :
+	text = ["Select what you like:","[0] hot    [1] new", "[2] rising [3] top", "[4] controversial"]
+	
+	smallWin = standardScreen.subwin(6,23,int(screenMaxY/2)-3,int(screenMaxX/2)-10)
+	smallWin.border();
+	smallWin.addstr(1,1,text[0])
+	smallWin.addstr(2,1,text[1])
+	smallWin.addstr(3,1,text[2])
+	smallWin.addstr(4,1,text[3])
+	smallWin.refresh()
 
-
+	try:
+		inp = int(standardScreen.getkey());
+		if inp == 0:
+			return "hot"
+		elif inp == 1:
+			return "new"
+		elif inp == 2:
+			return "rising"
+		elif inp == 3:
+			return "top"
+		elif inp == 4:
+			return "contro"
+		else:
+			return "error"+str(inp)
+	except ValueError:
+		return "error"
 
 
 def main(standardScreen, reddit) :
 	#TODO : use the Config class and the pcurb.cfg file
 
+	global config
 	config = Config()
 
 	# no arguments -> interactive mode
@@ -215,6 +265,8 @@ def main(standardScreen, reddit) :
 
 	titleWin.addstr(1,1, "Sub : "+currentSubreddit)
 
+	subMode = "hot"
+	titleWin.addstr(1,screenMaxX-8,subMode)
 
 	submissionsPad = curses.newpad(submissionsNumberLimit*5+2, screenMaxX+1) #submissions number limit times lines per submission
 
@@ -225,31 +277,52 @@ def main(standardScreen, reddit) :
 
 	submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
 
+	needRepaint = True;
 	
 	wrapper=textwrap.TextWrapper(width=(screenMaxX-1))
 	while True :
 
 
-		k=0
-		subIndice = 0
-		for subIter in submissions :
-			try:
-				subText = str(subIndice)+"] ["+subIter.link_flair_text+"]"+subIter.title +" ("+str(subIter.score)+"pts|"+str(subIter.num_comments)+"coms)"
-			except TypeError: #no flair
-				subText = str(subIndice)+"] "+subIter.title +" ("+str(subIter.score)+"pts|"+str(subIter.num_comments)+"coms)"
+		if needRepaint:
 
-			subHeightLines=0
-			for l in wrapper.wrap(subText) :
-				submissionsPad.addstr(k+subHeightLines,0,l)
-				subHeightLines=subHeightLines+1
+			#I don't know why, but this seems needed
+			if subMode == "hot":
+				submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
+			elif subMode == "rising": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_rising(limit=submissionsNumberLimit)
+			elif subMode == "new": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_new(limit=submissionsNumberLimit)
+			elif subMode == "top": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_top(limit=submissionsNumberLimit)
+			elif subMode == "contro": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_controversial(limit=submissionsNumberLimit)
+			else :
+				subMode = "hot"
+				submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
 
 
-			submissionsPad.addstr(k+subHeightLines,0,'----------')
-			k=k+subHeightLines+1
-			subIndice=subIndice+1
+			k=0
+			subIndice = 0
+			submissionsPad.clear()
+			for subIter in submissions :
+				try:
+					subText = str(subIndice)+"] ["+subIter.link_flair_text+"]"+subIter.title +" ("+str(subIter.score)+"pts|"+str(subIter.num_comments)+"coms)"
+				except TypeError: #no flair
+					subText = str(subIndice)+"] "+subIter.title +" ("+str(subIter.score)+"pts|"+str(subIter.num_comments)+"coms)"
 
-		#TODO find better
-		submissionsPad.addstr(k+1,0,"== End of submissions ==")
+				subHeightLines=0
+				for l in wrapper.wrap(subText) :
+					submissionsPad.addstr(k+subHeightLines,0,l)
+					subHeightLines=subHeightLines+1
+
+
+				submissionsPad.addstr(k+subHeightLines,0,'----------')
+				k=k+subHeightLines+1
+				subIndice=subIndice+1
+
+			#TODO find better
+			submissionsPad.addstr(k+1,0,"== End of submissions ==")
+			needRepaint = False
 
 
 
@@ -258,12 +331,33 @@ def main(standardScreen, reddit) :
 
 		userInput = standardScreen.getch()
 
-		if userInput == curses.KEY_DOWN :
+		if userInput == curses.KEY_DOWN or userInput == ord('j') or userInput == ord('J'):
 			if yCoord< (submissionsNumberLimit*5-screenMaxY+3) :
 				yCoord = yCoord+1
-		elif userInput == curses.KEY_UP :
+		elif userInput == curses.KEY_UP or userInput == ord('k') or userInput == ord('K'):
 			if yCoord>0 :
 				yCoord = yCoord-1
+
+		elif userInput == ord('o') or userInput == ord('O') :
+			# I got nothing, it's just close to M
+			subMode = selectMode(standardScreen, screenMaxY, screenMaxX)
+			if subMode == "hot":
+				submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
+			elif subMode == "rising": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_rising(limit=submissionsNumberLimit)
+			elif subMode == "new": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_new(limit=submissionsNumberLimit)
+			elif subMode == "top": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_top(limit=submissionsNumberLimit)
+			elif subMode == "contro": 
+				submissions = reddit.get_subreddit(currentSubreddit).get_controversial(limit=submissionsNumberLimit)
+			else :
+				subMode = "hot"
+				submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
+
+			titleWin.addstr(1,screenMaxX-8,"       ")
+			titleWin.addstr(1,screenMaxX-8,subMode)
+			needRepaint = True
 
 		elif userInput == ord('m') or userInput == ord('M') :
 			# M for 'more', type number of a submission to read it
@@ -272,11 +366,11 @@ def main(standardScreen, reddit) :
 			#return str(int(submissionToOpen))
 			try :
 				if int(submissionToOpen)<submissionsNumberLimit:
+					titleWin.addstr(1, screenMaxX-15, "              ")
 					titleWin.addstr(1, screenMaxX-15, "Loading no"+str(int(submissionToOpen)))
 					titleWin.refresh()
-					displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submissionsPad, reddit, currentSubreddit, submissionToOpen, submissionsNumberLimit)
-					submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
-					standardScreen.refresh()
+					displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submissionsPad, reddit, currentSubreddit, submissionToOpen, submissionsNumberLimit, subMode)
+					needRepaint=True
 			except ValueError :
 				pass
 	

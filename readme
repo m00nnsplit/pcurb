@@ -7,9 +7,11 @@ First, obviously, Python 3, [PRAW](https://praw.readthedocs.io/en/stable/) and n
 
 Run it simply by typing ./pcurb in a terminal. You can pass it "help", "h" or "-h" to get a short help ; type a subreddit name as argument to open that subreddit. (for instance, "./pcurb gifsofotters")
 
-When looking at a subreddit, use the up and down arrow keys to scroll, or Q to quit.
+When looking at a subreddit, use the up and down arrow keys (or j and k) to scroll, or Q to quit.
 
-Press M ("more"), then type a number, then press Enter and wait to see comments. Once there, use arrow keys to scroll or press Q to quit.
+Press M ("more"), then type a number, then press Enter and wait to see comments. Once there, use arrow keys (or j and k, or Pgup and Pdown) to scroll or press Q to quit.
+
+Press O (uuh..) to get a small window to appear, then press the number of the mode (hot, new, top..) you want to change it.
 
 
 ### Current state
