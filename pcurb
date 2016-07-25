@@ -14,7 +14,7 @@ filterwarnings("ignore", category=ResourceWarning)
 # we're doing argument processing inside main and reply depending on what main returns
 # for now no arguments, we just start up in interactive mode
 
-# variables :
+# attributes :
 # defaultSub
 # nbSubsPerPage
 # commentTreeLength
