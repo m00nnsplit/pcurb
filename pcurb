@@ -148,7 +148,7 @@ def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submission
 		leapLines=leapLines+1
 
 	leapLines=leapLines+1
-	commentsPad.addstr(leapLines,0,"Score: "+str(submissionWeAreLookingAt.score)+". Comments:  "+str(submissionWeAreLookingAt.num_comments)+". Submitted "+str(datetime.fromtimestamp(submissionWeAreLookingAt.created))+".")
+	commentsPad.addstr(leapLines,0,"Score: "+str(submissionWeAreLookingAt.score)+", Comments:  "+str(submissionWeAreLookingAt.num_comments)+". Submitted "+str(datetime.fromtimestamp(submissionWeAreLookingAt.created))+".")
 	leapLines=leapLines+1
 
 	try :
@@ -391,10 +391,14 @@ def main(standardScreen, reddit) :
 			subIndice = 0
 			submissionsPad.clear()
 			for subIter in submissions :
+				if subIter.is_self :
+					indiceSeparator = "]"
+				else : 
+					indiceSeparator = ")"
 				try:
-					subText = str(subIndice)+"] ["+subIter.link_flair_text+"]"+subIter.title +" ("+str(subIter.score)+"pts|"+str(subIter.num_comments)+"coms)"
+					subText = str(subIndice)+indiceSeparator+" ["+subIter.link_flair_text+"]"+subIter.title +" ("+str(subIter.score)+"pts|"+str(subIter.num_comments)+"coms)"
 				except TypeError: #no flair
-					subText = str(subIndice)+"] "+subIter.title +" ("+str(subIter.score)+"pts|"+str(subIter.num_comments)+"coms)"
+					subText = str(subIndice)+indiceSeparator+" "+subIter.title +" ("+str(subIter.score)+"pts|"+str(subIter.num_comments)+"coms)"
 
 				subHeightLines=0
 				for l in wrapper.wrap(subText) :
