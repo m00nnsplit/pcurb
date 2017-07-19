@@ -6,6 +6,7 @@ from sys import argv, stdout, stderr
 from datetime import datetime # for parsing timestamps
 from os import getcwd # used for the help message
 from time import sleep # to pause when selecting things
+import re # regular expressions useful for things
 from warnings import filterwarnings
 filterwarnings("ignore", category=ResourceWarning)
 # We get a warning because the SSL connection is not closed, but according to the PRAW people this is intentional, since the garbage collector takes care of it apparently
@@ -298,15 +299,37 @@ def main(standardScreen, reddit) :
 	global config
 	config = Config()
 
+	subMode = "hot"
 	# no arguments -> interactive mode
-	if len(argv) > 1 :
-		if argv[1] == 'help' or argv[1] == 'h' or argv[1] == '-h' :
-			return 'help'
+	if len(argv) > 1 : # n°0 is executable, obv
+		argno=1
+		while argno < len(argv) :
 
-		else :
-			currentSubreddit = argv[1]
-			pass 	
-		pass
+			if argv[argno] == 'help' or argv[argno] == 'h' or argv[argno] == '-h' :
+				return 'help'
+
+			elif argv[argno] == '--sort' or argv[argno] == '-s' :
+				subMode = argv[argno+1]
+				argno+=1
+			else :
+				currentSubreddit = argv[1]
+				if "." in currentSubreddit :
+					patternURL = re.compile("^.*\.reddit\.com.*$")
+					if patternURL.match(currentSubreddit):
+						# direct submission load
+						try:
+							s = reddit.get_submission(currentSubreddit)
+							#displayComments()
+							#TODO
+							return "submission direct URL to be done"
+						except Exception as e:
+							return "Identified "+currentSubreddit+" as a submission URL, but something went wrong:\n"+e.message
+
+					else:
+						currentSubreddit = config.defaultSub
+
+			argno+=1
+			
 	else :
 		currentSubreddit = config.defaultSub
 
@@ -325,7 +348,6 @@ def main(standardScreen, reddit) :
 
 	titleWin.addstr(1,1, "Sub : "+currentSubreddit)
 
-	subMode = "hot"
 	titleWin.addstr(1,screenMaxX-8,subMode)
 
 	submissionsPad = curses.newpad(submissionsNumberLimit*5+2, screenMaxX+1) #submissions number limit times lines per submission
@@ -384,6 +406,7 @@ def main(standardScreen, reddit) :
 
 			else :
 				subMode = "hot"
+				#TODO correct displayed subMode
 				submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
 
 
@@ -395,10 +418,17 @@ def main(standardScreen, reddit) :
 					indiceSeparator = "]"
 				else : 
 					indiceSeparator = ")"
+
+				subScore = str(subIter.score)
+				if subIter.score > 999 :
+					subScore=subScore[:-3]+"k"+subScore[-3]
+					# reddit uses "45.7k", but using the kilo as a comma saves us a character
+					# it's not uncommon
+
 				try:
-					subText = str(subIndice)+indiceSeparator+" ["+subIter.link_flair_text+"]"+subIter.title +" ("+str(subIter.score)+"pts|"+str(subIter.num_comments)+"coms)"
+					subText = str(subIndice)+indiceSeparator+" ["+subIter.link_flair_text+"]"+subIter.title +" ("+subScore+"pts|"+str(subIter.num_comments)+"coms)"
 				except TypeError: #no flair
-					subText = str(subIndice)+indiceSeparator+" "+subIter.title +" ("+str(subIter.score)+"pts|"+str(subIter.num_comments)+"coms)"
+					subText = str(subIndice)+indiceSeparator+" "+subIter.title +" ("+subScore+"pts|"+str(subIter.num_comments)+"coms)"
 
 				subHeightLines=0
 				for l in wrapper.wrap(subText) :
@@ -514,6 +544,8 @@ if errorType == "help" :
 	print("pass subreddit name as argument")
 	print("please read "+getcwd()+"/readme file for more details")
 	exit()
-#else :
-#	print("error : "+errorType)
-#	exit()
+elif errorType == None :
+	pass
+else :
+	print("error : "+errorType)
+	exit()

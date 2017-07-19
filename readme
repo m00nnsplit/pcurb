@@ -7,6 +7,10 @@ First, obviously, Python 3, [PRAW](https://praw.readthedocs.io/en/stable/) and n
 
 Run it simply by typing ./pcurb in a terminal. You can pass it "help", "h" or "-h" to get a short help ; type a subreddit name as argument to open that subreddit (for instance, "./pcurb gifsofotters") ; like with regular reddit, they can be combined with "+".
 
+-s or --sort followed by sort method will change the sort method. Choose from hot, new, rising, top-hr, top-dy, top-wk, top-mn, top-yr, top-al, con-hr, con-dy, con-wk, con-mn, con-yr, con-al.
+
+### Usage
+
 When looking at a subreddit, use the up and down arrow keys (or j and k) to scroll, or Q to quit.
 
 Press M ("more"), then type a number, then press Enter and wait to see comments. Once there, use arrow keys (or j and k, or Pgup and Pdown) to scroll or press Q to quit.
@@ -18,6 +22,17 @@ Press O ("order") to get a small window to appear, then press the number of the 
 
 Usable, just lacking on features. Can only load the first page of anything.
 
+#### To do
+
+ - Mark OP in comments (integrate into flair) ; limit flair size depending on screen size.
+
+ - Handle screen resizes dynamically ?
+
+ - Manage (gasp) loading more pages of something
+
+ - Manage sorting of comments
+
+ - When changing order, scroll pad back to top
 
 ### Contributing & Licensing
 
