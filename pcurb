@@ -56,9 +56,6 @@ global config
 
 # for recursivly displaying comment trees
 def displayReply(commentsPad, screenMaxX, leapLines, comment, commentLevel, desiredLevel) :
-	#FIXME:there's a problem somewhere, apparently when dealing with big comments
-	# I think this fixed it :
-	# basically a problem with MoreComments instead of Comment
 	if not isinstance(comment, praw.objects.Comment):
 		commentsPad.addstr(leapLines, commentLevel*2, "[More Comments]")
 		return leapLines+1
@@ -66,13 +63,39 @@ def displayReply(commentsPad, screenMaxX, leapLines, comment, commentLevel, desi
 	global config
 	
 	wrapper=textwrap.TextWrapper(width=(screenMaxX-1-(commentLevel*2)))
+
+	# flair management
+	theFlair=""
+	"""	
+	FIXME
+	important note : lazy objects mean 2 seconds every time we access a member of a comment.author object..
+	not really feasible
+
+	So as far as I can say, no way to add [A] and [M]
+	"""
+
+	commentInfo = "---- "+str(comment.score)+" : "+str(comment.author)
+
+	if comment.is_submitter :
+		theFlair+="[OP]"
+	# It seems that trying to access the lazy object comment.author results in problems
+	#if comment.author.is_employee :
+	#	theFlair+="[A]"
+	#if comment.author.is_mod :
+	#	theFlair+="[M]"
 	try:
-		if (len(comment.author_flair_text)>config.commentUserFlairMaxLength):
-			commentsPad.addstr(leapLines,commentLevel*2,"---- "+str(comment.score)+" : "+str(comment.author)+"["+comment.author_flair_text[:config.commentUserFlairMaxLength-2]+"..]")
+		# size is limited by screen size and config, whichever is smaller
+		maxFlairSize = min(config.commentUserFlairMaxLength, screenMaxX-(commentLevel*2+len(commentInfo)))
+		if (len(comment.author_flair_text)>maxFlairSize):
+			theFlair+="["+comment.author_flair_text[:config.commentUserFlairMaxLength-2]+"..]"
 		else :
-			commentsPad.addstr(leapLines,commentLevel*2,"---- "+str(comment.score)+" : "+str(comment.author)+"["+comment.author_flair_text+"]")
+			theFlair+="["+comment.author_flair_text+"]"
 	except TypeError: #no flair
-		commentsPad.addstr(leapLines,commentLevel*2,"---- "+str(comment.score)+" : "+str(comment.author))
+		pass
+
+	commentInfo+=theFlair
+	commentsPad.addstr(leapLines, commentLevel*2, commentInfo)
+
 	leapLines=leapLines+1
 	for i in str.splitlines(comment.body) :
 		for j in wrapper.wrap(i) :
@@ -425,10 +448,15 @@ def main(standardScreen, reddit) :
 					# reddit uses "45.7k", but using the kilo as a comma saves us a character
 					# it's not uncommon
 
+				subNumComments = str(subIter.num_comments)
+				if subIter.num_comments > 999 :
+					subNumComments=subNumComments[:-3]+"k"+subNumComments[-3]
+
+
 				try:
-					subText = str(subIndice)+indiceSeparator+" ["+subIter.link_flair_text+"]"+subIter.title +" ("+subScore+"pts|"+str(subIter.num_comments)+"coms)"
+					subText = str(subIndice)+indiceSeparator+" ["+subIter.link_flair_text+"]"+subIter.title +" ("+subScore+"pts|"+subNumComments+"coms)"
 				except TypeError: #no flair
-					subText = str(subIndice)+indiceSeparator+" "+subIter.title +" ("+subScore+"pts|"+str(subIter.num_comments)+"coms)"
+					subText = str(subIndice)+indiceSeparator+" "+subIter.title +" ("+subScore+"pts|"+subNumComments+"coms)"
 
 				subHeightLines=0
 				for l in wrapper.wrap(subText) :

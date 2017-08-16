@@ -33,6 +33,8 @@ Usable, just lacking on features. Can only load the first page of anything.
  - Manage sorting of comments
 
  - When changing order, scroll pad back to top
+ 
+ - Allow jumping from top comment to top comment (like anchors)
 
 ### Contributing & Licensing
 
