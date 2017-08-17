@@ -67,14 +67,18 @@ def displayReply(commentsPad, screenMaxX, leapLines, comment, commentLevel, desi
 	# flair management
 	theFlair=""
 	"""	
-	FIXME
 	important note : lazy objects mean 2 seconds every time we access a member of a comment.author object..
 	not really feasible
 
 	So as far as I can say, no way to add [A] and [M]
 	"""
+	
+	if comment.stickied :
+		commentInfo = "STIC "
+	else:
+		commentInfo = "---- "
 
-	commentInfo = "---- "+str(comment.score)+" : "+str(comment.author)
+	commentInfo +=str(comment.score)+" : "+str(comment.author)
 
 	if comment.is_submitter :
 		theFlair+="[OP]"
@@ -108,59 +112,25 @@ def displayReply(commentsPad, screenMaxX, leapLines, comment, commentLevel, desi
 
 
 # when a submission is opened, this function opens a new window and generates everything inside
-def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submissionsPad, reddit, currentSubreddit, submissionToOpen, submissionsNumberLimit, subMode):
+def displayComments(standardScreen, screenMaxY, screenMaxX, reddit, submissionToOpen, titleWin=None, submissionsPad=None, currentSubreddit=None, submissionsNumberLimit=None, subMode=None):
 	# we open a new window with the contents of the submission
-	#TODO send it the submission object, not just the number..
-	if subMode == "hot":
-		submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
-	elif subMode == "rising": 
-		submissions = reddit.get_subreddit(currentSubreddit).get_rising(limit=submissionsNumberLimit)
-	elif subMode == "new": 
-		submissions = reddit.get_subreddit(currentSubreddit).get_new(limit=submissionsNumberLimit)
-
-	elif subMode == "top-hr": 
-		submissions = reddit.get_subreddit(currentSubreddit).get_top_from_hour(limit=submissionsNumberLimit)
-	elif subMode == "top-dy": 
-		submissions = reddit.get_subreddit(currentSubreddit).get_top_from_day(limit=submissionsNumberLimit)
-	elif subMode == "top-wk": 
-		submissions = reddit.get_subreddit(currentSubreddit).get_top_from_week(limit=submissionsNumberLimit)
-	elif subMode == "top-mn": 
-		submissions = reddit.get_subreddit(currentSubreddit).get_top_from_month(limit=submissionsNumberLimit)
-	elif subMode == "top-yr": 
-		submissions = reddit.get_subreddit(currentSubreddit).get_top_from_year(limit=submissionsNumberLimit)
-	elif subMode == "top-al": 
-		submissions = reddit.get_subreddit(currentSubreddit).get_top_from_all(limit=submissionsNumberLimit)
-
-	elif subMode == "con-hr": 
-		submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_hour(limit=submissionsNumberLimit)
-	elif subMode == "con-dy": 
-		submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_day(limit=submissionsNumberLimit)
-	elif subMode == "con-wk": 
-		submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_week(limit=submissionsNumberLimit)
-	elif subMode == "con-mn": 
-		submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_month(limit=submissionsNumberLimit)
-	elif subMode == "con-yr": 
-		submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_year(limit=submissionsNumberLimit)
-	elif subMode == "con-al": 
-		submissions = reddit.get_subreddit(currentSubreddit).get_controversial_from_all(limit=submissionsNumberLimit)
-
-	else :
-		subMode = "hot"
-		submissions = reddit.get_subreddit(currentSubreddit).get_hot(limit=submissionsNumberLimit)
-
-
 
 	yCoordComments = 0
 	xCoordComments = 0
 	
-	submissionsPad.erase()
-	commentsPad = curses.newpad(200*100, screenMaxX+1) #200 is the max number of connents reddit loads at once and 100 is what I hope is the mean number or lines they'll take
-	for i in range(int(submissionToOpen)+1) :
-		submissionWeAreLookingAt = next(submissions)
+	if submissionsPad != None:
+		submissionsPad.erase()
+	commentsPad = curses.newpad(200*100, screenMaxX+1) #200 is the max number of comments reddit loads at once and 100 is what I hope is the mean number or lines they'll take
+	#for i in range(int(submissionToOpen)+1) :
+	#	submissionWeAreLookingAt = next(submissions)
+
+	# opening an URL is no more harmful than opening a lazy object, and it allows us to handily open URLs
+	submissionWeAreLookingAt = reddit.get_submission(url=submissionToOpen)
+
 
 	leapLines = 0
 	wrapper=textwrap.TextWrapper(width=screenMaxX-1)#, drop_whitespace=False)#replace_whitespace=False)
-	#TODO:replace_whitespace eats words, the textrwrap doc suggests use of str.splitlines()
+	#TODO:replace_whitespace eats words, the textwrap doc suggests use of str.splitlines()
 
 	try:
 		subText = "["+submissionWeAreLookingAt.link_flair_text+"]"+submissionWeAreLookingAt.title
@@ -180,9 +150,14 @@ def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submission
 	except TypeError : # no flair
 		commentsPad.addstr(leapLines,0, "By "+str(submissionWeAreLookingAt.author))
 
-	leapLines=leapLines+2
+	leapLines=leapLines+1
 
-
+	if submissionWeAreLookingAt.stickied:
+		leapLines+=1
+		commentsPad.addstr(leapLines, 0, "STICKIED")
+		leapLines+=1
+	
+	leapLines+=1
 
 	commentsPad.addstr(leapLines,0,"Permalink: "+submissionWeAreLookingAt.permalink[:screenMaxX-1-len("Permalink: ")])
 	for l in wrapper.wrap(submissionWeAreLookingAt.permalink[screenMaxX-1-len("Permalink: "):]) :
@@ -221,12 +196,16 @@ def displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submission
 			leapLines=leapLines+1 
 	commentsPad.addstr(leapLines+2,0,"== End of comments ==");#TODO: find a better way to prevent user scrolling into the abyss
 	commentsPad.refresh(yCoordComments,0,3,1,screenMaxY-1,screenMaxX-1)
-	titleWin.addstr(1,screenMaxX-16, "               ")
-	titleWin.refresh()
+	if titleWin != None :
+		titleWin.addstr(1,screenMaxX-16, "               ")
+		titleWin.refresh()
 	
 	while True :
 		standardScreen.refresh()
-		commentsPad.refresh(yCoordComments,0,3,1,screenMaxY-1,screenMaxX-1)
+		if titleWin != None :
+			commentsPad.refresh(yCoordComments,0,3,1,screenMaxY-1,screenMaxX-1)
+		else:
+			commentsPad.refresh(yCoordComments,0,0,1,screenMaxY-1,screenMaxX-1)
 
 		userInput = standardScreen.getch()
 
@@ -339,12 +318,16 @@ def main(standardScreen, reddit) :
 				if "." in currentSubreddit :
 					patternURL = re.compile("^.*\.reddit\.com.*$")
 					if patternURL.match(currentSubreddit):
-						# direct submission load
 						try:
+							# space is intentional
+							# kind of duct tapey but hey
+							standardScreen.addstr(" Loading direct submission URL..")
+							curses.curs_set(0) # invisible cursor
+							standardScreen.refresh()
 							s = reddit.get_submission(currentSubreddit)
-							#displayComments()
-							#TODO
-							return "submission direct URL to be done"
+							screenMaxY, screenMaxX = standardScreen.getmaxyx()
+							displayComments(standardScreen, screenMaxY, screenMaxX, reddit, currentSubreddit)
+							return None
 						except Exception as e:
 							return "Identified "+currentSubreddit+" as a submission URL, but something went wrong:\n"+e.message
 
@@ -435,8 +418,11 @@ def main(standardScreen, reddit) :
 
 			k=0
 			subIndice = 0
+			# like submissions, only in an array to access later
+			currentSubmissions = []
 			submissionsPad.clear()
 			for subIter in submissions :
+				currentSubmissions.append(subIter)
 				if subIter.is_self :
 					indiceSeparator = "]"
 				else : 
@@ -550,7 +536,8 @@ def main(standardScreen, reddit) :
 					titleWin.addstr(1, screenMaxX-15, "              ")
 					titleWin.addstr(1, screenMaxX-15, "Loading no"+str(int(submissionToOpen)))
 					titleWin.refresh()
-					displayComments(standardScreen, screenMaxY, screenMaxX, titleWin, submissionsPad, reddit, currentSubreddit, submissionToOpen, submissionsNumberLimit, subMode)
+					submissionToOpenURL = currentSubmissions[int(submissionToOpen)].permalink
+					displayComments(standardScreen, screenMaxY, screenMaxX, reddit, submissionToOpenURL, titleWin, submissionsPad, currentSubreddit, submissionsNumberLimit, subMode)
 					needRepaint=True
 			except ValueError :
 				pass
